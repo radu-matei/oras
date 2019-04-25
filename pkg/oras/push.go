@@ -3,6 +3,7 @@ package oras
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/remotes"
@@ -52,39 +53,52 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pushOpts) (ocispec.Descriptor, content.Provider, error) {
 	store := newHybridStoreFromProvider(provider)
 
-	// Config
-	var config ocispec.Descriptor
-	if opts.config == nil {
-		configBytes := []byte("{}")
-		config = ocispec.Descriptor{
-			MediaType: ocispec.MediaTypeImageConfig,
-			Digest:    digest.FromBytes(configBytes),
-			Size:      int64(len(configBytes)),
-		}
-		store.Set(config, configBytes)
-	} else {
-		config = *opts.config
-	}
-	config.Annotations = opts.configAnnotations
+	// // Config
+	// var config ocispec.Descriptor
+	// if opts.config == nil {
+	// 	configBytes := []byte("{}")
+	// 	config = ocispec.Descriptor{
+	// 		MediaType: ocispec.MediaTypeImageConfig,
+	// 		Digest:    digest.FromBytes(configBytes),
+	// 		Size:      int64(len(configBytes)),
+	// 	}
+	// 	store.Set(config, configBytes)
+	// } else {
+	// 	config = *opts.config
+	// }
+	// config.Annotations = opts.configAnnotations
 
-	// Manifest
-	manifest := ocispec.Manifest{
+	// // Manifest
+	// manifest := ocispec.Manifest{
+	// 	Versioned: specs.Versioned{
+	// 		SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+	// 	},
+	// 	Config:      config,
+	// 	Layers:      descriptors,
+	// 	Annotations: opts.manifestAnnotations,
+	// }
+
+	index := ocispec.Index{
 		Versioned: specs.Versioned{
-			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+			SchemaVersion: 2,
 		},
-		Config:      config,
-		Layers:      descriptors,
+		Manifests:   descriptors,
 		Annotations: opts.manifestAnnotations,
 	}
-	manifestBytes, err := json.Marshal(manifest)
+
+	manifestBytes, err := json.Marshal(index)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
 	manifestDescriptor := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageManifest,
+		//MediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
+		MediaType: ocispec.MediaTypeImageIndex,
 		Digest:    digest.FromBytes(manifestBytes),
 		Size:      int64(len(manifestBytes)),
 	}
+
+	fmt.Printf("%s\n\n", manifestBytes)
+
 	store.Set(manifestDescriptor, manifestBytes)
 
 	return manifestDescriptor, store, nil

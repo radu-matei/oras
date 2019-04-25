@@ -2,6 +2,8 @@ package oras
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"sync"
 
 	orascontent "github.com/deislabs/oras/pkg/content"
@@ -40,6 +42,19 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string, ingester c
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
+
+	bytes, err := json.MarshalIndent(desc, "", "\t")
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	ioutil.WriteFile("descriptor.json", bytes, 0644)
+
+	bytes, err = json.MarshalIndent(layers, "", "\t")
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	ioutil.WriteFile("layers.json", bytes, 0644)
+
 	return desc, layers, nil
 }
 
